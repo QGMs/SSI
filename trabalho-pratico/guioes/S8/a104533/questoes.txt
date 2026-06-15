@@ -1,0 +1,58 @@
+Semana 8 - Criptografia Assimetrica
+
+Dependencias:
+- sudo apt update
+- sudo apt install -y python3-cryptography openssl
+
+Ficheiros implementados:
+- dh.py
+- dh_aes_gcm.py
+- gen_certs.sh
+- sts_aes_gcm.py
+
+Comandos de teste:
+- python3 dh.py
+- python3 dh_aes_gcm.py
+
+- chmod +x gen_certs.sh
+- ./gen_certs.sh
+- ls CA.key CA.crt Alice.key Alice.crt Bob.key Bob.crt
+- python3 sts_aes_gcm.py
+
+Resultados observados na VM:
+- dh.py: Alice e Bob imprimiram o mesmo segredo partilhado K.
+- dh_aes_gcm.py: Alice e Bob imprimiram o mesmo K; Bob recebeu "Ola Bob, mensagem secreta de Alice." e Alice recebeu "Ola Alice, mensagem secreta de Bob."
+- gen_certs.sh: foram gerados com sucesso CA.key, CA.crt, Alice.key, Alice.crt, Bob.key e Bob.crt.
+- sts_aes_gcm.py: Alice e Bob imprimiram o mesmo K; Bob recebeu "Ola Bob, mensagem protegida por STS." e Alice recebeu "Ola Alice, assinatura e certificado validados."
+
+Resumo do que cada ficheiro faz:
+- dh.py: executa um Diffie-Hellman entre a Alice e o Bob em processos separados e imprime o segredo partilhado K dos dois lados.
+- dh_aes_gcm.py: depois do DH, deriva uma chave AES-GCM com HKDF e troca duas mensagens confidenciais.
+- gen_certs.sh: gera a CA, as chaves de Alice/Bob, os CSRs e os certificados assinados pela CA.
+- sts_aes_gcm.py: implementa o protocolo STS com certificados, assinaturas RSA-PSS e troca protegida por AES-GCM.
+
+Q1
+Nao. Se o proprio segredo partilhado K dessa sessao for comprometido, todas as chaves derivadas a partir dele pela KDF podem ser recomputadas.
+Assim, todas as mensagens trocadas nessa sessao deixam de estar protegidas.
+
+Ha PFS no sentido classico apenas contra compromisso posterior das chaves de longo prazo, desde que cada sessao use um novo DH efemero.
+Mas se o segredo de sessao K for revelado, a seguranca dessa sessao fica comprometida.
+
+Q2
+A informacao das chaves publicas fica armazenada nos certificados X509:
+
+- a chave publica da CA em CA.crt;
+- a chave publica da Alice em Alice.crt;
+- a chave publica do Bob em Bob.crt.
+
+Os ficheiros .key guardam as chaves privadas, nao as publicas.
+
+Q3
+Nao. Se a Alice nao validar o certificado do Bob com a CA, ela pode continuar a verificar uma assinatura correta, mas essa assinatura pode pertencer a um atacante e nao ao Bob.
+
+Ou seja:
+
+- a verificacao da assinatura so prova que quem assinou conhece a chave privada correspondente;
+- sem validar o certificado, a Alice nao sabe se essa chave publica pertence mesmo ao Bob.
+
+Assim, um atacante pode apresentar o seu proprio certificado/chave, assinar os valores DH e montar um ataque de Man-in-the-Middle.

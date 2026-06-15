@@ -1,0 +1,49 @@
+S10 - Questoes
+
+Q1.
+As linhas que leem `__elgg_ts` e `__elgg_token` vao buscar do proprio browser da vitima os dois valores anti-CSRF que o Elgg exige para aceitar a operacao.
+Sao necessarias porque o pedido "add friend" nao depende apenas da cookie de sessao; o servidor tambem verifica estes dois parametros.
+Sem eles, ou com valores errados/antigos, o pedido e rejeitado.
+
+Q2.
+Sim, ainda continua possivel.
+O modo Editor e apenas uma interface do lado do cliente; nao e uma defesa real do lado do servidor.
+Mesmo que a interface esconda o HTML/JavaScript, um atacante pode construir ou alterar diretamente o pedido HTTP que grava o perfil,
+por exemplo com as DevTools, um proxy ou outro cliente HTTP.
+O modo Text apenas facilita a insercao manual do payload sem o editor alterar o codigo.
+
+Q3.
+O ataque enquadra-se em Stored XSS.
+O codigo malicioso fica armazenado no perfil do atacante no servidor; depois, quando outra vitima visita essa pagina,
+o browser dela descarrega a pagina ja contaminada e executa o JavaScript.
+Nao e Reflected XSS porque o payload nao regressa logo na resposta ao mesmo pedido.
+Nao e DOM XSS porque a vulnerabilidade principal nao nasce de uma manipulacao insegura do DOM no browser;
+nasce do facto de a aplicacao armazenar e voltar a servir codigo ativo.
+
+Q4.
+Os tres sites diferem na politica CSP que o browser recebe, e por isso diferem nos scripts que ele aceita executar.
+
+`www.example32a.com`
+- Nao tem CSP.
+- Resultado: scripts inline, scripts do proprio host, scripts de outros hosts e `onclick` funcionam.
+
+`www.example32b.com`
+- Tem `default-src 'self'; script-src 'self' *.example70.com`.
+- Resultado: o browser aceita scripts do proprio site e de `example70.com`, mas bloqueia scripts inline,
+`onclick` inline e scripts vindos de `example60.com`.
+
+`www.example32c.com`
+- Tem CSP definida na aplicacao PHP.
+- Permite `self`, permite `*.example70.com` e permite o nonce `111-111-111`.
+- Resultado: o script inline com nonce `111-111-111` executa, o script inline com nonce diferente falha,
+o script sem nonce falha, o script de `self` executa, o script de `example70` executa e o de `example60` falha.
+
+Na resolucao da Task 7:
+- `example32b` foi alterado para incluir `*.example60.com`
+- `example32c` foi alterado para incluir `*.example60.com` e o nonce `222-222-222`
+
+Isso explica porque:
+- a Area 5 passa a funcionar em `example32b` e `example32c`
+- a Area 2 passa a funcionar em `example32c`
+- a Area 3 continua bloqueada
+- o `onclick` continua bloqueado

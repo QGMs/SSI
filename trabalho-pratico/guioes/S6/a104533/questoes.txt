@@ -1,0 +1,78 @@
+Semana 6 - Cifras Modernas
+
+Dependencia:
+- python3 -m pip install cryptography
+
+Ficheiros implementados:
+- cfich_chacha20.py
+- chacha20_int_attck.py
+- cfich_aes_cbc.py
+- cfich_aes_ctr.py
+- pbenc_chacha20.py
+
+Comandos de teste:
+- printf "Mensagem secreta para testes.\n" > segredo.txt
+- python3 cfich_chacha20.py setup chacha.key
+- python3 cfich_chacha20.py enc segredo.txt chacha.key
+- python3 cfich_chacha20.py dec segredo.txt.enc chacha.key
+- cat segredo.txt.enc.dec
+
+- python3 chacha20_int_attck.py segredo.txt.enc 9 secreta hackeda
+- python3 cfich_chacha20.py dec segredo.txt.enc.attck chacha.key
+- cat segredo.txt.enc.attck.dec
+
+- python3 cfich_aes_cbc.py setup aes.key
+- python3 cfich_aes_cbc.py enc segredo.txt aes.key
+- python3 cfich_aes_cbc.py dec segredo.txt.enc aes.key
+- cat segredo.txt.enc.dec
+
+- python3 cfich_aes_ctr.py setup aes_ctr.key
+- python3 cfich_aes_ctr.py enc segredo.txt aes_ctr.key
+- python3 cfich_aes_ctr.py dec segredo.txt.enc aes_ctr.key
+- cat segredo.txt.enc.dec
+
+- printf "frase-passe\n" | python3 pbenc_chacha20.py enc segredo.txt
+- printf "frase-passe\n" | python3 pbenc_chacha20.py dec segredo.txt.enc
+- cat segredo.txt.enc.dec
+
+Teste especifico para Q2 (mesma chave e mesmo nonce):
+- cp segredo.txt segredo_flip.txt
+- printf '\x4c' | dd of=segredo_flip.txt bs=1 seek=0 count=1 conv=notrunc
+- python3 - << 'PY'
+- from pathlib import Path
+- from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+- key = Path("chacha.key").read_bytes()
+- nonce = bytes(16)
+- def enc_file(inp, out):
+-     data = Path(inp).read_bytes()
+-     c = Cipher(algorithms.ChaCha20(key, nonce), mode=None).encryptor()
+-     Path(out).write_bytes(nonce + c.update(data))
+- enc_file("segredo.txt", "segredo_fixed.enc")
+- enc_file("segredo_flip.txt", "segredo_flip_fixed.enc")
+- PY
+- cmp -l segredo_fixed.enc segredo_flip_fixed.enc
+- Resultado observado: diferenca, "17 230 231".
+
+Q1
+Usar um nonce fixo em ChaCha20 e inseguro. Com a mesma chave e o mesmo nonce, a keystream repete-se; logo,
+dois criptogramas podem ser combinados para obter o XOR dos textos limpos. Isso destrói a confidencialidade.
+
+Q2
+ChaCha20 e uma cifra sequencial sincronizada. Se alterarmos um bit do texto limpo e cifrarmos com a mesma chave e o mesmo nonce,
+muda apenas o bit correspondente do criptograma. No teste realizado com nonce fixo,
+o comando cmp indicou apenas uma diferenca ("17 230 231"), o que confirma que so um bit do criptograma foi afetado.
+
+Q3
+No modo CTR, alterar um bit do criptograma altera exatamente um bit na mesma posicao do texto limpo apos decifrar.
+No modo CBC, um bit alterado no bloco C_i corrompe de forma imprevisivel o bloco P_i inteiro e altera exatamente
+um bit na mesma posicao do bloco seguinte P_{i+1}.
+
+Q4
+O ataque de integridade implementado para ChaCha20 funciona tambem em AES-CTR, porque o modo CTR tambem usa XOR com uma keystream.
+Em AES-CBC, a manipulacao direta por XOR no criptograma nao produz a mesma substituicao controlada;
+em vez disso, corrompe um bloco e afeta o bloco seguinte de forma limitada.
+
+Q5
+O salt serve para derivar chaves diferentes a partir da mesma passphrase e impedir tabelas pre-computadas.
+O nonce serve para garantir que a cifra nao reutiliza a mesma keystream para a mesma chave derivada.
+Sao ambos necessarios, porque protegem partes diferentes do processo.
