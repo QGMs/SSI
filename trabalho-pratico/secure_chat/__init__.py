@@ -1,0 +1,2 @@
+"""Secure chat coursework package."""
+
